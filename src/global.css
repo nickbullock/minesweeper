@@ -1,0 +1,35 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  margin: 10px;
+}
+
+.row {
+  display: flex;
+  flex-direction: row;
+}
+
+.row-padded > * + *  {
+  margin-left: 6px;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+}
+
+.space-between {
+  justify-content: space-between;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
+.mt-10 {
+  margin-top: 10px;
+}

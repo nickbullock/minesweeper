@@ -1,68 +1,66 @@
-import React, { FormEvent, useCallback, useState } from 'react';
-
+import React, { useCallback, useEffect, useState } from 'react';
 import './global.css';
+import Modal from 'react-modal';
+
 import { MineSweeper } from './MineSweeper/MineSweeper';
+import { MineSweeperSettings } from './MineSweeper/types';
+import { SettingsModal } from './SettingsModal/SettingsModal';
+import { Difficulty, FormSubmitData } from './SettingsModal/Form/types';
+import { LEVELS } from './SettingsModal/Form/constants';
 import {
   DEFAULT_COLUMN_COUNT,
   DEFAULT_MINE_COUNT,
   DEFAULT_ROW_COUNT,
 } from './MineSweeper/constants';
-import { Form } from './Form/Form';
-import {
-  handleColumnCountInputValue,
-  handleMineCountInputValue,
-  handleRowCountInputValue,
-} from './Form/utils';
-import { MineSweeperSettings } from './MineSweeper/types';
+
+Modal.setAppElement('#root');
+
+const storageKey = 'MineSweeperLevel';
 
 function App() {
-  const [rowCount, setRowCount] = useState(DEFAULT_ROW_COUNT.toString());
-  const [columnCount, setColumnCount] = useState(DEFAULT_COLUMN_COUNT.toString());
-  const [mineCount, setMineCount] = useState(DEFAULT_MINE_COUNT.toString());
+  const [isSettingsOpened, setIsSettingsOpened] = useState(false);
 
-  const [settings, setSettings] = useState<MineSweeperSettings>({
-    rowCount: DEFAULT_ROW_COUNT,
-    columnCount: DEFAULT_COLUMN_COUNT,
-    mineCount: DEFAULT_MINE_COUNT,
-  });
-
-  const onSubmit = useCallback(
-    (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-
-      const newSettings = {} as MineSweeperSettings;
-
-      newSettings.rowCount = handleRowCountInputValue(rowCount);
-      newSettings.columnCount = handleColumnCountInputValue(columnCount);
-
-      const maxMineCount = newSettings.rowCount * newSettings.columnCount - 1;
-
-      newSettings.mineCount = handleMineCountInputValue(mineCount, maxMineCount);
-
-      setSettings(newSettings);
-      setRowCount(newSettings.rowCount.toString());
-      setColumnCount(newSettings.columnCount.toString());
-      setMineCount(newSettings.mineCount.toString());
-    },
-    [rowCount, columnCount, mineCount],
+  const [level, setLevel] = useState(
+    (localStorage.getItem(storageKey) as Difficulty) || Difficulty.Beginner,
   );
 
-  const onRowCountChange = useCallback(e => setRowCount(e.target.value), []);
-  const onColumnCountChange = useCallback(e => setColumnCount(e.target.value), []);
-  const onMineCountChange = useCallback(e => setMineCount(e.target.value), []);
+  const [settings, setSettings] = useState<MineSweeperSettings>({
+    rowCount: level === Difficulty.Custom ? DEFAULT_ROW_COUNT : LEVELS[level].rowCount,
+    columnCount: level === Difficulty.Custom ? DEFAULT_COLUMN_COUNT : LEVELS[level].columnCount,
+    mineCount: level === Difficulty.Custom ? DEFAULT_MINE_COUNT : LEVELS[level].mineCount,
+  });
+
+  const onSettingsClick = useCallback(() => setIsSettingsOpened(opened => !opened), []);
+
+  const onSubmit = useCallback(({ settings, level }: FormSubmitData) => {
+    setLevel(level);
+    setIsSettingsOpened(false);
+    setSettings(settings);
+  }, []);
+
+  useEffect(() => {
+    if (level !== Difficulty.Custom) {
+      localStorage.setItem(storageKey, level);
+    }
+  }, [level]);
 
   return (
-    <div className="app">
-      <Form
-        rowCount={rowCount}
-        columnCount={columnCount}
-        mineCount={mineCount}
-        onRowCountChange={onRowCountChange}
-        onColumnCountChange={onColumnCountChange}
-        onMineCountChange={onMineCountChange}
+    <div className="app column">
+      <div className="row">
+        <button className="m-auto" onClick={onSettingsClick}>
+          Settings
+        </button>
+      </div>
+      <MineSweeper settings={settings} className="minesweeper" />
+      <SettingsModal
+        level={level}
+        rowCount={settings.rowCount.toString()}
+        columnCount={settings.columnCount.toString()}
+        mineCount={settings.mineCount.toString()}
+        isOpen={isSettingsOpened}
+        onRequestClose={onSettingsClick}
         onSubmit={onSubmit}
       />
-      <MineSweeper settings={settings} className="mt-10" />
     </div>
   );
 }

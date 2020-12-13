@@ -4,17 +4,12 @@ import { randomInt } from '../../test-utils';
 
 const MINE_FREE_CELLS = 9;
 
-/**
- * @overview
- * Processor class keeps all the rules of minesweeper game
- * Created to contain the game logic only and have opportunity
- * to easily separate it from UI to backend or web-worker
- * */
 export class Processor {
   constructor(rowCount: number, columnCount: number, mineCount: number) {
     this.rowCount = rowCount;
     this.columnCount = columnCount;
     this.mineCount = mineCount;
+    this.isBoardMoreThanHalfMined = this.mineCount > (this.rowCount * this.columnCount) / 2;
   }
 
   readonly columnCount: number;
@@ -22,12 +17,12 @@ export class Processor {
   readonly mineCount: number;
 
   private anyCellOpened: boolean = false;
-  private minePositions: XYKey[] = [];
   private flagPositions: XYKey[] = [];
-  private remainingBlankPositions: CellBoard = {};
+  private remainingBlankPositions: CellViewBoard = {};
   private mineBoard: CellBoard = {};
   private board: CellViewBoard = {};
   private gameStatus: GameStatus = GameStatus.NotStarted;
+  private isBoardMoreThanHalfMined: boolean = false;
 
   public getBoard(): CellViewBoard {
     return this.board;
@@ -42,11 +37,11 @@ export class Processor {
   }
 
   public init(): void {
-    const { board, mineBoard } = this.createBoards();
+    const { board, mineBoard } = this.createBoards(this.isBoardMoreThanHalfMined);
 
     this.mineBoard = mineBoard;
     this.board = board;
-    this.remainingBlankPositions = { ...mineBoard };
+    this.remainingBlankPositions = { ...board };
   }
 
   public reset(): void {
@@ -61,7 +56,7 @@ export class Processor {
 
     const key = getKey(x, y);
     const view = this.board[key];
-    const { mine } = this.mineBoard[key];
+    const mine = this.mineBoard[key]?.mine;
 
     if (view.startsWith('open')) return;
     if (this.anyCellOpened && mine) return this.lose(key);
@@ -117,35 +112,87 @@ export class Processor {
   }
 
   private setMines(x: number, y: number): void {
-    const bombsFreeMap = this.getMineFreeCells(x, y);
-    const map = this.createBoards().mineBoard;
+    const mineFreeMap = this.getMineFreeCells(x, y);
+    let startCount = 0;
 
-    Object.keys(map).forEach(key => {
-      if (bombsFreeMap[key]) {
-        delete map[key];
-      }
-    });
-
-    shuffle(Object.keys(map))
-      .slice(0, this.mineCount)
-      .forEach(key => {
+    if (this.isBoardMoreThanHalfMined) {
+      Object.keys(mineFreeMap).forEach(key => {
         const { x, y } = parseKey(key);
 
-        this.setMine(x, y);
+        if (this.mineBoard[key]?.mine) {
+          this.resetMine(x, y);
+          startCount += 1;
+        }
       });
+    }
+
+    const endCount = this.isBoardMoreThanHalfMined
+      ? this.rowCount * this.columnCount - this.mineCount
+      : this.mineCount;
+
+    while (startCount < endCount) {
+      const x = randomInt(0, this.rowCount - 1);
+      const y = randomInt(0, this.columnCount - 1);
+      const key = getKey(x, y);
+
+      if (this.isBoardMoreThanHalfMined) {
+        if (this.mineBoard[key]?.mine) {
+          this.resetMine(x, y);
+          startCount++;
+        }
+      } else {
+        if (!this.mineBoard[key]?.mine && !mineFreeMap[key]) {
+          this.setMine(x, y);
+          startCount++;
+        }
+      }
+    }
   }
 
   private setMine(x: number, y: number) {
     const key = getKey(x, y);
 
-    this.minePositions.push(key);
-    this.mineBoard[key].mine = true;
-    this.incrementAdjacentCellMineCount(x, y);
+    this.mineBoard[key] = this.createCell(true);
+    this.incrementAdjacentCellMineCount(this.mineBoard, x, y);
   }
 
-  private incrementAdjacentCellMineCount(x: number, y: number) {
+  private resetMine(x: number, y: number) {
+    const key = getKey(x, y);
+    const root = this.mineBoard[key];
+
+    if (root) {
+      root.mine = false;
+      this.decrementAdjacentCellMineCount(this.mineBoard, x, y);
+    }
+  }
+
+  private incrementAdjacentCellMineCount(board: CellBoard = this.mineBoard, x: number, y: number) {
     Object.keys(this.getAdjacentCells(x, y)).forEach(key => {
-      this.mineBoard[key].adjacentCellMineCount += 1;
+      const root = board[key];
+
+      if (root) {
+        root.adjacentCellMineCount += 1;
+      } else {
+        board[key] = this.createCell(false, 1);
+      }
+    });
+  }
+
+  private decrementAdjacentCellMineCount(board: CellBoard = this.mineBoard, x: number, y: number) {
+    Object.keys(this.getAdjacentCells(x, y)).forEach(key => {
+      const root = board[key];
+
+      if (root) {
+        root.adjacentCellMineCount -= 1;
+      } else {
+        const adjacentCells = this.getAdjacentCells(x, y);
+
+        const adjacentCellMineCount = Object.keys(adjacentCells).filter(
+          key => !!this.mineBoard[key]?.mine,
+        ).length;
+
+        board[key] = this.createCell(false, adjacentCellMineCount);
+      }
     });
   }
 
@@ -161,7 +208,7 @@ export class Processor {
       const [key] = getAdjacentCells();
 
       const { x, y } = parseKey(key);
-      const { adjacentCellMineCount } = this.mineBoard[key];
+      const adjacentCellMineCount = this.mineBoard[key]?.adjacentCellMineCount || 0;
 
       if (adjacentCellMineCount === 0) {
         this.board[key] = CellView.Open;
@@ -183,8 +230,8 @@ export class Processor {
     }
   }
 
-  private getAdjacentCells(x: number, y: number): Record<XYKey, CellModel | undefined> {
-    const result = {} as Record<XYKey, CellModel | undefined>;
+  private getAdjacentCells(x: number, y: number): Record<XYKey, boolean | undefined> {
+    const result = {} as Record<XYKey, boolean | undefined>;
     const self = getKey(x, y);
 
     for (let i = x - 1; i <= x + 1; i++) {
@@ -193,7 +240,7 @@ export class Processor {
         const newY = clamp(j, 0, this.columnCount - 1);
         const key = getKey(newX, newY);
 
-        result[key] = this.mineBoard[key];
+        result[key] = true;
       }
     }
 
@@ -203,14 +250,14 @@ export class Processor {
   }
 
   private lose(key: XYKey): void {
-    this.minePositions.forEach(key => {
-      if (this.board[key] !== CellView.MineFlagged) {
+    Object.keys(this.mineBoard).forEach(key => {
+      if (this.mineBoard[key]?.mine && this.board[key] !== CellView.MineFlagged) {
         this.board[key] = CellView.MineRevealed;
       }
     });
 
     this.flagPositions.forEach(key => {
-      if (this.board[key] === CellView.MineFlagged && !this.mineBoard[key].mine) {
+      if (this.board[key] === CellView.MineFlagged && !this.mineBoard[key]?.mine) {
         this.board[key] = CellView.MineWrongFlagged;
       }
     });
@@ -230,9 +277,11 @@ export class Processor {
   private win(): void {
     this.flagPositions = [];
 
-    this.minePositions.forEach(key => {
-      this.flagPositions.push(key);
-      this.board[key] = CellView.MineFlagged;
+    Object.keys(this.mineBoard).forEach(key => {
+      if (this.mineBoard[key]?.mine) {
+        this.flagPositions.push(key);
+        this.board[key] = CellView.MineFlagged;
+      }
     });
 
     this.gameStatus = GameStatus.Win;
@@ -242,7 +291,7 @@ export class Processor {
     return this.getGameStatus() === GameStatus.Lose || this.getGameStatus() === GameStatus.Win;
   }
 
-  private createBoards(): { board: CellViewBoard; mineBoard: CellBoard } {
+  private createBoards(mine = false): { board: CellViewBoard; mineBoard: CellBoard } {
     const board: CellViewBoard = {};
     const mineBoard: CellBoard = {};
 
@@ -251,15 +300,21 @@ export class Processor {
         const key = getKey(x, y);
 
         board[key] = CellView.Blank;
-        mineBoard[key] = this.createCell();
+
+        if (mine) {
+          const adjacentCells = this.getAdjacentCells(x, y);
+          const adjacentCellCount = Object.keys(adjacentCells).length;
+
+          mineBoard[key] = this.createCell(mine, adjacentCellCount);
+        }
       }
     }
 
     return { board, mineBoard };
   }
 
-  private createCell(): CellModel {
-    return { mine: false, adjacentCellMineCount: 0 };
+  private createCell(mine = false, adjacentCellMineCount = 0): CellModel {
+    return { mine, adjacentCellMineCount };
   }
 
   private isCellOutOfBounds(x: number, y: number) {

@@ -14,6 +14,9 @@ export const Layout: FC<LayoutProps> = props => {
 
   return (
     <div className={`game${className ? ` ${className}` : ''}`}>
+      <div className="title-bar">
+        <div className="title-bar-text">Minesweeper</div>
+      </div>
       <HorizontalBorder />
       <div className="row">
         <VerticalBorder long />

@@ -10,17 +10,20 @@ import {
   MIN_COLUMN_COUNT,
   MIN_MINE_COUNT,
   MIN_ROW_COUNT,
-} from '../MineSweeper/constants';
-import { randomInt } from '../test-utils';
+} from '../../MineSweeper/constants';
+import { randomInt } from '../../test-utils';
 
 import { Form } from './Form';
+import { Difficulty } from './types';
 
 const getDefaultProps = (
+  level = Difficulty.Beginner,
   rowCount = DEFAULT_ROW_COUNT.toString(),
   columnCount = DEFAULT_COLUMN_COUNT.toString(),
   mineCount = DEFAULT_MINE_COUNT.toString(),
 ) => {
   return {
+    level,
     rowCount,
     columnCount,
     mineCount,
@@ -50,6 +53,7 @@ describe('Form', () => {
     const mineCount = randomInt(MIN_MINE_COUNT, rowsCount * columnCount - 1);
 
     const props = getDefaultProps(
+      Difficulty.Custom,
       rowsCount.toString(),
       columnCount.toString(),
       mineCount.toString(),
@@ -61,29 +65,6 @@ describe('Form', () => {
     expect(inputs.rowsCountInput.value).toBe(props.rowCount);
     expect(inputs.columnCountInput.value).toBe(props.columnCount);
     expect(inputs.mineCountInput.value).toBe(props.mineCount);
-  });
-
-  it('calls onRowCountChange, onColumnCountChange and onMineCountChange', () => {
-    const rowsCount = randomInt(MIN_ROW_COUNT, MAX_ROW_COUNT);
-    const columnCount = randomInt(MIN_COLUMN_COUNT, MAX_COLUMN_COUNT);
-    const mineCount = randomInt(MIN_MINE_COUNT, rowsCount * columnCount - 1);
-
-    const props = getDefaultProps();
-
-    render(<Form {...props} />);
-
-    const inputs = getInputs();
-
-    const rowsCountChangeEvent = { target: { value: rowsCount.toString() } };
-    const columnCountChangeEvent = { target: { value: columnCount.toString() } };
-    const mineCountChangeEvent = { target: { value: mineCount.toString() } };
-
-    fireEvent.change(inputs.rowsCountInput, rowsCountChangeEvent);
-    expect(props.onRowCountChange).toHaveBeenCalled();
-    fireEvent.change(inputs.columnCountInput, columnCountChangeEvent);
-    expect(props.onColumnCountChange).toHaveBeenCalled();
-    fireEvent.change(inputs.mineCountInput, mineCountChangeEvent);
-    expect(props.onMineCountChange).toHaveBeenCalled();
   });
 
   it('calls onSubmit', () => {

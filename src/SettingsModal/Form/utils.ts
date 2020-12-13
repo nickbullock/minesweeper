@@ -1,4 +1,4 @@
-import { clamp } from '../utils';
+import { clamp } from '../../utils';
 import {
   DEFAULT_COLUMN_COUNT,
   DEFAULT_MINE_COUNT,
@@ -8,7 +8,7 @@ import {
   MIN_COLUMN_COUNT,
   MIN_MINE_COUNT,
   MIN_ROW_COUNT,
-} from '../MineSweeper/constants';
+} from '../../MineSweeper/constants';
 
 const handleInputValue = (value: string, min: number, max: number, defaultValue: number) => {
   let num = parseInt(value, 10);

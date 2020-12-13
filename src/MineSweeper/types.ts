@@ -34,7 +34,7 @@ export enum CellView {
 }
 
 export type XYKey = string;
-export type CellBoard = Record<XYKey, CellModel>;
+export type CellBoard = Record<XYKey, CellModel | undefined>;
 export type CellViewBoard = Record<XYKey, CellView>;
 export type CellViewWithKey = { key: XYKey; view: CellView };
 export type RowsWithCells = CellViewWithKey[][];

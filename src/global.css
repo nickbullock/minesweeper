@@ -1,7 +1,49 @@
 .app {
-  display: flex;
-  flex-direction: column;
   margin: 10px;
+}
+
+.minesweeper {
+  margin: 10px auto;
+}
+
+.input {
+  width: 50px
+}
+
+.modal {
+  position: absolute;
+  outline: none;
+  top: 40%;
+  left: 50%;
+  min-width: 400px;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: rgba(255, 255, 255, .4);
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadein 1s;
+}
+
+.controls {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.controls > * + * {
+  margin-left: 10px;
 }
 
 .row {
@@ -32,4 +74,8 @@
 
 .mt-10 {
   margin-top: 10px;
+}
+
+.m-auto {
+  margin: auto;
 }

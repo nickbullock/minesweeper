@@ -1,6 +1,6 @@
 import React, { FC, memo, useEffect, useState } from 'react';
 
-import { CellBoard, CellViewBoard, RowsWithCells } from '../types';
+import { CellViewBoard, RowsWithCells } from '../types';
 
 import { Cell } from './Cell/Cell';
 import { mapBoardToRowsWithCells } from './utils';
